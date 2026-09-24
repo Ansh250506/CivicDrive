@@ -20,6 +20,14 @@ function timeNow() {
 
 export default function DriverDashboard() {
   const navigate = useNavigate();
+  const [session, setSession] = useState({ name: 'Driver', vehicle: '' });
+
+  useEffect(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('civicdrive_session'));
+      if (s) setSession(s);
+    } catch (e) {}
+  }, []);
   const videoRef = useRef(null);
   const ignitionStartedRef = useRef(false);
   const [monitoring, setMonitoring] = useState(false);
@@ -81,8 +89,8 @@ export default function DriverDashboard() {
       const total = next.slice(1).reduce((sum, p, i) => sum + distanceMeters(next[i], p), 0);
       try {
         localStorage.setItem('civicdrive_live_location', JSON.stringify({
-          driver: 'A-2291',
-          vehicle: 'GJ-01-AB-2291',
+          driver: session.name,
+          vehicle: session.vehicle,
           current: point,
           route: next,
           totalDistanceMeters: Math.round(total),
@@ -211,7 +219,7 @@ export default function DriverDashboard() {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       time: timeNow(),
       event: v.label,
-      driver: 'A-2291',
+      driver: session.name,
       location: 'Live vehicle camera',
       confidence,
       status: 'Flagged',
@@ -367,7 +375,7 @@ export default function DriverDashboard() {
         <div className="side-foot">
           <span className="role-label">DRIVER ACCOUNT</span>
           <strong style={{ color: 'var(--text-primary)' }}>Driver #A-2291</strong>
-          <br />Vehicle: GJ-01-AB-2291
+          <br />Vehicle: {session.vehicle || 'Not assigned'}
           <button className="logout-link" onClick={() => { localStorage.removeItem('civicdrive_session'); navigate('/login'); }}>Log out</button>
         </div>
       </aside>
@@ -384,8 +392,8 @@ export default function DriverDashboard() {
         </div>
 
         <div className="info-strip">
-          <div><span>DRIVER</span><strong>Driver #A-2291</strong></div>
-          <div><span>VEHICLE</span><strong>GJ-01-AB-2291</strong></div>
+          <div><span>DRIVER</span><strong>{session.name}</strong></div>
+          <div><span>VEHICLE</span><strong>{session.vehicle || 'Not assigned'}</strong></div>
           <div><span>SESSION</span><strong>Active · Auto monitored</strong></div>
           <div><span>ACCOUNT</span><strong>Verified</strong></div>
         </div>
