@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 function useCountUp(target, decimals = 0, duration = 900) {
@@ -26,6 +26,14 @@ export default function Landing() {
   const violationsRef = useCountUp(2148, 0);
   const speedRef = useCountUp(0.4, 1);
   const uptimeRef = useCountUp(99.1, 1);
+  const [session, setSession] = useState(null);
+
+  useEffect(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('civicdrive_session'));
+      if (s) setSession(s);
+    } catch (e) {}
+  }, []);
 
   return (
     <>
@@ -36,9 +44,18 @@ export default function Landing() {
           <a href="#how">How it works</a>
           <a href="#impact">Impact</a>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <Link to="/signup" className="btn btn-ghost">Sign Up</Link>
-          <Link to="/login" className="btn btn-primary">Login</Link>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          {session ? (
+            <>
+              <span style={{ marginRight: '1rem', color: 'var(--text-secondary)' }}>Welcome, {session.name.split(' ')[0]}</span>
+              <Link to={session.role === 'admin' ? '/admin' : '/driver'} className="btn btn-primary">Dashboard →</Link>
+            </>
+          ) : (
+            <>
+              <Link to="/signup" className="btn btn-ghost">Sign Up</Link>
+              <Link to="/login" className="btn btn-primary">Login</Link>
+            </>
+          )}
         </div>
       </nav>
 
@@ -55,8 +72,14 @@ export default function Landing() {
             violations as they happen, scores every driver, and makes the record impossible to fake or switch off.
           </p>
           <div className="hero-cta">
-            <Link to="/signup" className="btn btn-primary">Sign Up as Driver →</Link>
-            <Link to="/login" className="btn btn-ghost">Login</Link>
+            {session ? (
+              <Link to={session.role === 'admin' ? '/admin' : '/driver'} className="btn btn-primary">Continue to Dashboard →</Link>
+            ) : (
+              <>
+                <Link to="/signup" className="btn btn-primary">Sign Up as Driver →</Link>
+                <Link to="/login" className="btn btn-ghost">Login</Link>
+              </>
+            )}
             <a href="#how" className="btn btn-ghost">How detection works</a>
           </div>
         </div>
