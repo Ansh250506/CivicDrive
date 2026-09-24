@@ -1,62 +1,73 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-
-const DEMO_USERS = {
-  driver: {
-    email: 'driver@civicdrive.local',
-    password: 'driver123',
-    name: 'Driver #A-2291',
-    role: 'driver',
-    vehicle: 'GJ-01-AB-2291',
-  },
-  admin: {
-    email: 'admin@civicdrive.local',
-    password: 'admin123',
-    name: 'Traffic Admin',
-    role: 'admin',
-  },
-};
+import { supabase } from '../lib/supabaseClient';
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [role, setRole] = useState('driver');
-  const [email, setEmail] = useState(DEMO_USERS.driver.email);
-  const [password, setPassword] = useState(DEMO_USERS.driver.password);
-  const [error, setError] = useState('');
+
+  const [role, setRole]         = useState('driver');
+  const [email, setEmail]       = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError]       = useState('');
+  const [loading, setLoading]   = useState(false);
 
   function selectRole(nextRole) {
     setRole(nextRole);
-    setEmail(DEMO_USERS[nextRole].email);
-    setPassword(DEMO_USERS[nextRole].password);
     setError('');
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    const user = DEMO_USERS[role];
+    setError('');
 
-    if (email.trim().toLowerCase() !== user.email || password !== user.password) {
-      setError('Invalid demo credentials. Use the credentials shown below.');
+    if (!email || !password) {
+      setError('Please enter your email and password.');
       return;
     }
 
-    localStorage.setItem(
-      'civicdrive_session',
-      JSON.stringify({
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        vehicle: user.vehicle || null,
-        loggedInAt: new Date().toISOString(),
-      })
-    );
+    // ── Admin: keep a single hardcoded admin account ──────────────
+    if (role === 'admin') {
+      if (email.trim().toLowerCase() === 'admin@civicdrive.local' && password === 'admin123') {
+        localStorage.setItem('civicdrive_session', JSON.stringify({
+          name: 'Traffic Admin',
+          email: 'admin@civicdrive.local',
+          role: 'admin',
+          vehicle: null,
+          loggedInAt: new Date().toISOString(),
+        }));
+        navigate('/admin', { replace: true });
+        return;
+      }
+      setError('Invalid admin credentials.');
+      return;
+    }
+
+    // ── Driver: check against Supabase drivers table ───────────────
+    setLoading(true);
+    const { data, error: dbError } = await supabase
+      .from('drivers')
+      .select('*')
+      .eq('email', email.trim().toLowerCase())
+      .eq('password', password)
+      .single();
+    setLoading(false);
+
+    if (dbError || !data) {
+      setError('Invalid email or password. Please try again or sign up.');
+      return;
+    }
+
+    localStorage.setItem('civicdrive_session', JSON.stringify({
+      name: data.name,
+      email: data.email,
+      role: data.role || 'driver',
+      vehicle: data.vehicle_id || null,
+      loggedInAt: new Date().toISOString(),
+    }));
 
     const requested = location.state?.from;
-    const destination = requested && (role === 'admin' ? requested === '/admin' : requested === '/driver')
-      ? requested
-      : role === 'admin' ? '/admin' : '/driver';
-
+    const destination = requested === '/driver' ? '/driver' : '/driver';
     navigate(destination, { replace: true });
   }
 
@@ -71,12 +82,14 @@ export default function Login() {
         <section className="auth-card glass">
           <div className="auth-badge">SECURE ACCESS</div>
           <h1>Sign in to CivicDrive</h1>
-          <p className="auth-sub">Choose your side. Driver accounts see personal driving status and records; Admin accounts see city-wide monitoring information.</p>
+          <p className="auth-sub">
+            Choose your side. Driver accounts see personal driving status and records; Admin accounts see city-wide monitoring information.
+          </p>
 
           <div className="role-switch">
             <button type="button" className={role === 'driver' ? 'role-btn active' : 'role-btn'} onClick={() => selectRole('driver')}>
               <span>🚗</span>
-              <div><strong>Driver Side</strong><small>My status & records</small></div>
+              <div><strong>Driver Side</strong><small>My status &amp; records</small></div>
             </button>
             <button type="button" className={role === 'admin' ? 'role-btn active' : 'role-btn'} onClick={() => selectRole('admin')}>
               <span>🛡️</span>
@@ -86,20 +99,45 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="auth-form">
             <label>Email
-              <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" autoComplete="username" />
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                type="email"
+                placeholder={role === 'admin' ? 'admin@civicdrive.local' : 'your@email.com'}
+                autoComplete="username"
+                required
+              />
             </label>
             <label>Password
-              <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" autoComplete="current-password" />
+              <input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type="password"
+                placeholder="Your password"
+                autoComplete="current-password"
+                required
+              />
             </label>
             {error && <div className="auth-error">{error}</div>}
-            <button className="btn btn-primary auth-submit" type="submit">Login as {role === 'admin' ? 'Admin' : 'Driver'} →</button>
+            <button className="btn btn-primary auth-submit" type="submit" disabled={loading}>
+              {loading ? 'Signing in…' : `Login as ${role === 'admin' ? 'Admin' : 'Driver'} →`}
+            </button>
           </form>
 
-          <div className="demo-box">
-            <strong>Demo login</strong>
-            <span>{DEMO_USERS[role].email}</span>
-            <span>{DEMO_USERS[role].password}</span>
-          </div>
+          {role === 'admin' && (
+            <div className="demo-box">
+              <strong>Admin credentials</strong>
+              <span>admin@civicdrive.local</span>
+              <span>admin123</span>
+            </div>
+          )}
+
+          {role === 'driver' && (
+            <p style={{ textAlign: 'center', marginTop: '1rem', opacity: 0.7, fontSize: '0.875rem' }}>
+              No account?{' '}
+              <Link to="/signup" style={{ color: 'inherit', textDecoration: 'underline' }}>Sign up as a driver</Link>
+            </p>
+          )}
         </section>
 
         <aside className="auth-info">

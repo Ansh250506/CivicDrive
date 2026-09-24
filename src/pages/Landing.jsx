@@ -36,7 +36,10 @@ export default function Landing() {
           <a href="#how">How it works</a>
           <a href="#impact">Impact</a>
         </div>
-        <Link to="/login" className="btn btn-primary">Login</Link>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          <Link to="/signup" className="btn btn-ghost">Sign Up</Link>
+          <Link to="/login" className="btn btn-primary">Login</Link>
+        </div>
       </nav>
 
       <header className="wrap hero">
@@ -52,7 +55,8 @@ export default function Landing() {
             violations as they happen, scores every driver, and makes the record impossible to fake or switch off.
           </p>
           <div className="hero-cta">
-            <Link to="/login" className="btn btn-primary">Login to CivicDrive →</Link>
+            <Link to="/signup" className="btn btn-primary">Sign Up as Driver →</Link>
+            <Link to="/login" className="btn btn-ghost">Login</Link>
             <a href="#how" className="btn btn-ghost">How detection works</a>
           </div>
         </div>
